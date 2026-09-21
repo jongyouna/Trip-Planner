@@ -1,6 +1,12 @@
 @AGENTS.md
+@progress.md
 
 # CLAUDE.md
+
+## 시작 규칙
+
+- 세션을 시작하면 작업 전에 `progress.md`(작업 로그·발견 사항·다음 단계)를 먼저 읽는다. 위 `@progress.md`가 자동으로 불러온다.
+- 작업이 끝나면 `progress.md`를 갱신한다.
 
 가성비 숙소 수집기(Playwright) + 대시보드(Next.js). 숙소를 지역·날짜·가격으로 모아 `data/hotels.json`에 저장하고 웹에서 본다. DB 없음.
 
