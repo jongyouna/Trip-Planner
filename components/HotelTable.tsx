@@ -163,7 +163,10 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
                         className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
                           active ? "font-bold text-zinc-900 dark:text-zinc-100" : ""
                         }`}
-                        onClick={() => setF(nextSort({ key: f.sort, dir: f.dir }, c.key!))}
+                        onClick={() => {
+                          const next = nextSort({ key: f.sort, dir: f.dir }, c.key!);
+                          setF({ sort: next.key, dir: next.dir });
+                        }}
                       >
                         {c.label}
                         <span aria-hidden className="w-3 text-[10px]">
