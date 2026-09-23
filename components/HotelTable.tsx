@@ -142,7 +142,70 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
         )}
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="flex items-center gap-2 sm:hidden">
+        <label className="flex-1 text-xs">
+          정렬
+          <select
+            className={inputClass}
+            value={f.sort}
+            onChange={(e) => setF({ sort: e.target.value as SortKey })}
+          >
+            {COLUMNS.filter((c) => c.key !== null).map((c) => (
+              <option key={c.key} value={c.key!}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="mt-4 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700"
+          onClick={() => setF({ dir: f.dir === "asc" ? "desc" : "asc" })}
+          aria-label={f.dir === "asc" ? "오름차순" : "내림차순"}
+        >
+          {f.dir === "asc" ? "▲" : "▼"}
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:hidden">
+        {rows.map((h) => (
+          <div
+            key={hotelKey(h)}
+            className="rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-medium">{h.name}</span>
+              <span className="whitespace-nowrap text-right">
+                {won.format(h.price)}원
+                {h.priceNote && <div className="text-xs text-zinc-500">{h.priceNote}</div>}
+              </span>
+            </div>
+            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              {h.checkin.slice(5)} ~ {h.checkout.slice(5)} · {SITE_LABEL[h.site]}
+            </div>
+            <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{h.address ?? "-"}</div>
+            <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+              평점 {h.reviewScore === null ? "-" : `${h.reviewScore}/${h.reviewScoreMax}`} · 리뷰{" "}
+              {h.reviewCount === null ? "-" : won.format(h.reviewCount)}
+            </div>
+            <a
+              href={h.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-blue-600 underline dark:text-blue-400"
+            >
+              예약 페이지
+            </a>
+          </div>
+        ))}
+        {rows.length === 0 && (
+          <p className="py-8 text-center text-sm text-zinc-500">
+            조건에 맞는 숙소가 없습니다. 필터를 조정해 보세요.
+          </p>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-zinc-300 text-xs text-zinc-500 dark:border-zinc-700">
