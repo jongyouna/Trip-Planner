@@ -1,11 +1,12 @@
 import { z } from "zod";
 
-export const SITES = ["yanolja", "tripcom"] as const;
+export const SITES = ["yanolja", "tripcom", "naver"] as const;
 export type Site = (typeof SITES)[number];
 
 export const SITE_LABEL: Record<Site, string> = {
   yanolja: "야놀자",
   tripcom: "Trip.com",
+  naver: "네이버",
 };
 
 /** 수집기·수동 수집(ingest)·대시보드가 모두 이 스키마 하나로 검증한다. */

@@ -21,11 +21,12 @@ npm run dev            # http://localhost:3000 (data/hotels.json 변경은 새�
 
 ```bash
 npm run collect -- --region 포천 --checkin 2026-09-23 --checkout 2026-09-24 --max-price 50000 --sites yanolja
+npm run collect -- --region "강원 고성" --checkin 2026-10-05 --checkout 2026-10-06 --max-price 200000 --sites naver
 ```
 
 - 로컬에 설치된 Chrome 창이 열린다(`.browser-profile/`에 로그인 상태 유지).
 - 같은 사이트·숙소·날짜는 최신 값으로 덮어쓴다. 주소는 한 번 얻으면 재사용한다(`--no-address`로 조회 생략).
-- 구현된 사이트: 야놀자. Trip.com은 미구현(사유는 `CLAUDE.md`).
+- 구현된 사이트: 야놀자(지역 키워드 검색), 네이버(지도 즐겨찾기 '숙소' 폴더 중 주소에 `--region`이 들어간 항목만, 로그인 필요). Trip.com은 미구현(사유는 `CLAUDE.md`).
 
 ## 직접 모은 데이터 넣기
 

@@ -8,9 +8,8 @@ import {
   useQueryStates,
 } from "nuqs";
 import { useMemo } from "react";
-import { type Hotel, SITES, SITE_LABEL, score10 } from "@/lib/schema";
-
-const SORTS = ["price", "score", "reviews"] as const;
+import { type Hotel, SITES, SITE_LABEL, hotelKey, score10 } from "@/lib/schema";
+import { SORT_DIRS, SORT_KEYS, type SortKey, nextSort, sortHotels } from "@/lib/sort";
 
 const filterParsers = {
   maxPrice: parseAsInteger.withDefault(50000),
@@ -19,8 +18,20 @@ const filterParsers = {
   site: parseAsStringLiteral(["all", ...SITES] as const).withDefault("all"),
   region: parseAsString.withDefault(""),
   checkin: parseAsString.withDefault(""),
-  sort: parseAsStringLiteral(SORTS).withDefault("price"),
+  sort: parseAsStringLiteral(SORT_KEYS).withDefault("price"),
+  dir: parseAsStringLiteral(SORT_DIRS).withDefault("asc"),
 };
+
+const COLUMNS: { key: SortKey | null; label: string; right?: boolean }[] = [
+  { key: "name", label: "숙소명" },
+  { key: "site", label: "사이트" },
+  { key: "date", label: "날짜" },
+  { key: "address", label: "주소" },
+  { key: "price", label: "가격", right: true },
+  { key: "score", label: "평점", right: true },
+  { key: "reviews", label: "리뷰", right: true },
+  { key: null, label: "예약" },
+];
 
 const won = new Intl.NumberFormat("ko-KR");
 
@@ -44,18 +55,14 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
         (score10(h) ?? 0) >= f.minScore &&
         (h.reviewCount ?? 0) >= f.minReviews,
     );
-    return filtered.sort((a, b) => {
-      if (f.sort === "score") return (score10(b) ?? -1) - (score10(a) ?? -1);
-      if (f.sort === "reviews") return (b.reviewCount ?? -1) - (a.reviewCount ?? -1);
-      return a.price - b.price;
-    });
+    return sortHotels(filtered, f.sort, f.dir);
   }, [hotels, f]);
 
   const lowest = rows.length > 0 ? Math.min(...rows.map((h) => h.price)) : null;
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <label className="text-xs">
           최대 가격(원)
           <input
@@ -123,18 +130,6 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
             ))}
           </select>
         </label>
-        <label className="text-xs">
-          정렬
-          <select
-            className={inputClass}
-            value={f.sort}
-            onChange={(e) => setF({ sort: e.target.value as (typeof SORTS)[number] })}
-          >
-            <option value="price">가격 낮은 순</option>
-            <option value="score">평점 높은 순</option>
-            <option value="reviews">리뷰 많은 순</option>
-          </select>
-        </label>
       </div>
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -151,20 +146,40 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
         <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-zinc-300 text-xs text-zinc-500 dark:border-zinc-700">
-              <th className="py-2 pr-3">숙소명</th>
-              <th className="py-2 pr-3">사이트</th>
-              <th className="py-2 pr-3">날짜</th>
-              <th className="py-2 pr-3">주소</th>
-              <th className="py-2 pr-3 text-right">가격</th>
-              <th className="py-2 pr-3 text-right">평점</th>
-              <th className="py-2 pr-3 text-right">리뷰</th>
-              <th className="py-2">예약</th>
+              {COLUMNS.map((c) => {
+                const active = c.key !== null && c.key === f.sort;
+                return (
+                  <th
+                    key={c.label}
+                    scope="col"
+                    className={`py-2 pr-3 ${c.right ? "text-right" : ""}`}
+                    aria-sort={active ? (f.dir === "asc" ? "ascending" : "descending") : c.key ? "none" : undefined}
+                  >
+                    {c.key === null ? (
+                      c.label
+                    ) : (
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+                          active ? "font-bold text-zinc-900 dark:text-zinc-100" : ""
+                        }`}
+                        onClick={() => setF(nextSort({ key: f.sort, dir: f.dir }, c.key!))}
+                      >
+                        {c.label}
+                        <span aria-hidden className="w-3 text-[10px]">
+                          {active ? (f.dir === "asc" ? "▲" : "▼") : ""}
+                        </span>
+                      </button>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {rows.map((h) => (
               <tr
-                key={`${h.site}:${h.siteHotelId}:${h.checkin}`}
+                key={hotelKey(h)}
                 className="border-b border-zinc-200 dark:border-zinc-800"
               >
                 <td className="py-2 pr-3 font-medium">{h.name}</td>

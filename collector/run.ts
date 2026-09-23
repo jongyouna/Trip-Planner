@@ -1,26 +1,10 @@
 // 사용법: npm run collect -- --region 포천 --checkin 2026-09-23 --checkout 2026-09-24 --max-price 50000 --sites yanolja [--no-address]
 import { parseArgs } from "node:util";
-import { loadHotels } from "../lib/data";
 import { SITES, type Site } from "../lib/schema";
-import {
-  BlockedError,
-  type RunLogEntry,
-  type SearchQuery,
-  type SiteAdapter,
-  type SiteRunLog,
-  appendRunLog,
-  launchBrowser,
-  persist,
-  sleep,
-  jitter,
-} from "./core";
-import { yanolja } from "./sites/yanolja";
-
-const ADAPTERS: Partial<Record<Site, SiteAdapter>> = { yanolja };
+import { ADAPTERS, runCollect } from "./collect";
+import type { SearchQuery } from "./core";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-/** 리뷰 점수가 이 비율 넘게 비면 사이트 구조가 바뀐 것으로 보고 경고한다. */
-const MISSING_SCORE_WARN_RATIO = 0.5;
 
 function parseQuery(): { query: SearchQuery; sites: Site[]; fetchAddress: boolean } {
   const { values } = parseArgs({
@@ -54,43 +38,7 @@ function parseQuery(): { query: SearchQuery; sites: Site[]; fetchAddress: boolea
 
 async function main() {
   const { query, sites, fetchAddress } = parseQuery();
-  const known = loadHotels().hotels;
-  const startedAt = new Date().toISOString();
-  const results: SiteRunLog[] = [];
-  const log = (msg: string) => console.log(msg);
-
-  const context = await launchBrowser();
-  try {
-    for (const [i, site] of sites.entries()) {
-      if (i > 0) await sleep(jitter(2000));
-      const adapter = ADAPTERS[site]!;
-      const page = await context.newPage();
-      try {
-        const knownAddresses = new Map(
-          known.filter((h) => h.site === site && h.address).map((h) => [h.siteHotelId, h.address as string]),
-        );
-        const { hotels, skipped } = await adapter.search(page, query, { knownAddresses, fetchAddress }, log);
-        const missing = hotels.filter((h) => h.reviewScore === null).length;
-        if (hotels.length > 0 && missing / hotels.length > MISSING_SCORE_WARN_RATIO) {
-          log(`⚠ ${site}: 리뷰 점수 누락 ${missing}/${hotels.length}건 — 사이트 구조 변경 가능성`);
-        }
-        const total = persist(hotels);
-        log(`${site}: ${hotels.length}건 저장 (전체 ${total}건, 제외 ${skipped})`);
-        results.push({ site, status: "ok", collected: hotels.length, skipped });
-      } catch (e) {
-        const blocked = e instanceof BlockedError;
-        const error = e instanceof Error ? e.message : String(e);
-        log(`${blocked ? "차단됨" : "실패"} ${site}: ${error}`);
-        results.push({ site, status: blocked ? "blocked" : "failed", collected: 0, skipped: 0, error });
-      } finally {
-        await page.close();
-      }
-    }
-  } finally {
-    await context.close();
-    const entry: RunLogEntry = { startedAt, finishedAt: new Date().toISOString(), query, sites: results };
-    appendRunLog(entry);
-  }
+  const { results } = await runCollect(query, sites, { fetchAddress, log: (msg) => console.log(msg) });
   if (results.some((r) => r.status !== "ok")) process.exitCode = 1;
 }
 

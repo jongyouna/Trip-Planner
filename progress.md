@@ -1,6 +1,6 @@
 # 진행 기록 (progress)
 
-마지막 업데이트: 2026-09-21
+마지막 업데이트: 2026-09-23
 
 ## 목표
 여행마다 야놀자·네이버 호텔·Trip.com 등에 흩어진 숙소를 따로 열어 보는 불편을 줄인다. 로컬 PC 브라우저로 지역·날짜·가격 조건에 맞는 숙소를 모아 `data/hotels.json`에 저장하고, 웹 대시보드로 본다. 수집 항목은 숙소명, 예약 가능 날짜, 주소, 가격, 리뷰 수, 리뷰 점수, 예약 링크.
@@ -13,9 +13,12 @@
 | 대시보드(Next.js 정적 export) | 동작, GitHub Pages 공개 |
 | 공개 주소 | https://jongyouna.github.io/Trip-Planner/ |
 | Trip.com 수집기 | 미구현 (아래 "막힌 점") |
-| 네이버 호텔 | 범위 제외 (Claude 브라우저 확장에서 접근 차단) |
-| 지역 필터 | 미적용 (다른 지역 숙소가 섞임) |
-| 테스트 | 단위 테스트 15개 통과, 타입체크 통과 |
+| 네이버 어댑터 (`collector/sites/naver.ts`) | 구현 완료 (지도 즐겨찾기 '숙소' 폴더 + 지역 필터, `npm run collect -- --sites naver`) — **실제 수집 미검증** (테스트는 단위 테스트만, 실행은 로그인 세션 필요) |
+| 네이버 호텔/지도 (수동, aside) | aside 브라우저 핸드오프로 강원도 고성 즐겨찾기 숙소 26곳 1회 수집 완료 (`aside-result.md`) — 이제 위 정식 어댑터로 대체 예정 |
+| 지역 필터 | 야놀자는 미적용(다른 지역 숙소가 섞임). 네이버는 어댑터에 내장(주소에 `--region` 포함 여부) |
+| 열 제목 클릭 정렬 | 구현 (`lib/sort.ts`, URL `sort`·`dir`) |
+| Google 로그인 + 최저가 탐색 | 코드 구현·빌드 통과, **실환경 미검증** (Firestore 규칙 게시·서비스 계정 키·워커 실행 필요, `docs/firebase-setup.md`) |
+| 테스트 | 단위 테스트 45개 통과, 타입체크·lint(신규 파일 기준) 통과 |
 
 ## 한 일 (시간순)
 
@@ -33,6 +36,12 @@
    - 응답 구조가 기대와 다른 항목이 10%를 넘으면 경고.
    - 주소는 상세 페이지 판매자 정보의 "사업자주소"만 사용, 한 번 얻은 주소는 재사용.
 6. **GitHub Pages 배포**: 정적 export 전환, `StaleBadge`(24시간 경과 경고)를 클라이언트로 분리, `noindex`, GitHub Actions 워크플로(테스트 → 빌드 → 배포). 리포를 public으로 전환하고 Pages를 활성화한 뒤 푸시. 배포 URL에서 57곳 표시, 필터 동작, 404 없음을 확인.
+
+7. **로그인·탐색 버튼·정렬 (2026-09-22)**: 참조 리포(`buja-map-vercel`)의 Firebase Auth(Google 팝업) 방식을 따라 정적 Pages에서 로그인. 버튼은 Firestore `searchJobs/{uid}`에 요청을 쓰고, 자택 PC `npm run worker`가 감시·수집해 `searchResults/{uid}`에 결과를 쓴다(GitHub self-hosted runner는 public 리포 위험으로 채택 안 함). 허용 계정은 `jongyouna@gmail.com` 하나(규칙 + `lib/auth.ts` + 워커가 Firebase Auth로 재확인). 지역·체크인·체크아웃·최대가를 입력칸으로 받음. 표는 열 제목 클릭으로 오름/내림차순. 수집 실행부를 `collector/collect.ts`(`runCollect`)로 분리해 CLI·워커가 공유. Authorized domains에 `jongyouna.github.io`는 이미 등록돼 있음.
+8. **네이버 지도 즐겨찾기 가격 비교 시도, aside 브라우저 핸드오프 설계 (2026-09-23)**: 크롬 데스크탑 내장 브라우저·크롬 클로드 플러그인(home pc) 둘 다로 `map.naver.com`/`pcmap.place.naver.com` 접속 시도, 둘 다 `"This site is not allowed due to safety restrictions"`로 차단 확인 (권한 요청 팝업도 안뜸, 사용자 쪽 설정으로 해제 불가한 하드코드 정책으로 보임). 대안으로 파일 기반 핸드오프 설계: 이 세션이 `aside-request.md`에 막힌 작업을 적으면, 그 사이트에 접근 가능한 별도 주체("aside 브라우저" — 사용자 본인 또는 다른 세션)가 처리 후 `aside-result.md`에 결과를 남기고, 이 세션이 다시 읽어 이어간다. 절차·템플릿은 `docs/aside-browser-handoff.md`. 두 파일은 검색 이력 포함 가능해 `.gitignore` 등록, 커밋 안 함.
+9. **네이버 지도 즐겨찾기 고성 숙소 가격 수집 완료 (2026-09-23)**: 사용자가 로그인한 네이버 세션을 활용하여 네이버 지도 저장 폴더('숙소', 416건) 중 강원도 고성군 소재 숙소 26곳을 필터링. 각 숙소의 2026-10-05 ~ 2026-10-06 (1박) 최저 가격, 예약 링크, 주소, 리뷰 및 비고 정보를 수집하여 `aside-result.md`로 정리 및 저장 완료.
+10. **Antigravity `antigravity-naver-hotel` 스킬 편입 (2026-09-23)**: 위 수집 과정을 Antigravity(별도 에이전트)가 스킬로 정리(`.agents/skills/antigravity-naver-hotel/`, 글로벌 `~/.gemini/config/skills/`에도 존재). 이 세션(Claude Code)에서 바로 쓰도록 `.claude/skills/antigravity-naver-hotel/`로 복사. 절차는 Playwright `launchPersistentContext` + `.browser-profile` 기반 내부 API 직접 호출(북마크 `GET /p/api/bookmark`, 폴더 `GET /save-pages/api/maps-bookmark/v3/folders`, 호텔 `hotels.naver.com/.../rates`, 펜션 `map.naver.com/p/entry/place/{sid}` → `#entryIframe`) — 이번에 막혔던 크롬 확장 경로와 무관해 차단 회피 아님. 스킬이 언급하는 `npm run aside-collect` 스크립트는 `package.json`에 아직 없음(다음 할 일).
+11. **`collector/sites/naver.ts` 정식 어댑터 편입 (2026-09-23)**: 위 스킬·`collector/aside-collect.ts`(Antigravity가 만든 1회성 스크립트)의 검증된 로직을 야놀자와 같은 `SiteAdapter` 인터페이스로 포팅. `lib/schema.ts`에 `SITES`·`SITE_LABEL`에 `naver` 추가(대시보드 필터 드롭다운에 자동 반영), `collector/collect.ts`의 `ADAPTERS`에 등록. 지역 검색이 아니라 로그인 계정 즐겨찾기 '숙소' 폴더 중 주소에 `--region`이 들어간 항목만 수집, 가격은 `pcmap.place.naver.com/accommodation/{sid}/room` 우선·실패 시 `hotels.naver.com/.../rates` 재시도, 가격 확인 안 되면(전화·SNS 예약 등) 제외. 즐겨찾기 API 응답 스키마는 계정마다 다를 수 있어 `extractBookmarks`로 느슨하게(재귀적으로) 파싱 — 야놀자처럼 zod로 강하게 고정하지 않음(0건이면 오류로 드러남). 단위 테스트 14개 추가(`collector/sites/naver.test.ts`), 전체 45개 통과, 타입체크 통과. **실제 브라우저로 돌려보진 않음** — 셀렉터·엔드포인트가 실관측(aside 수집 결과 링크 형식)과 스킬 문서 기준이라 사이트가 다르면 첫 실행에서 깨질 수 있음. `npm run lint` 재실행 결과 신규 파일은 깨끗하나 기존 `collector/aside-collect.ts`에 `no-explicit-any` 오류 4건·미사용 변수 경고 1건 있음(이번 작업 범위 밖, 손대지 않음).
 
 ## 확인된 사실
 
@@ -71,11 +80,13 @@
 
 ## 다음 할 일
 
+0. 로그인·탐색 실환경 검증: `buja-map-vercel/firestore.rules`에 `searchJobs`·`searchResults` 블록 병합·게시, 서비스 계정 키 발급(리포 밖 보관), `npm run worker` 실행 후 웹에서 탐색. 다박(2박 이상) 검색 시 야놀자 `discountPrice`가 1박 기준인지 합계인지 확인(`price`는 "1박 총액" 의미).
 1. 지역 필터: 주소에 지역명이 포함된 숙소만 남기고 재수집 후 푸시.
 2. Trip.com 다음 페이지 문제 원인 확인 (사용자 Chrome에서 직접 열어 동작 비교 등). 막히면 야놀자만 유지.
 3. 다른 날짜·지역 수집 (같은 사이트·숙소·날짜는 덮어쓰고 날짜가 다르면 별개 항목으로 누적).
 4. 필요하면 TourAPI·KakaoMap으로 주소·좌표 보강.
-5. lint 재실행.
+5. `npm run collect -- --sites naver`로 실제 실행 검증 (로그인 세션·셀렉터·엔드포인트가 실사이트와 맞는지). 깨지면 `collector/sites/naver.ts`의 `fetchBookmarks`/`fetchPriceInfo` 점검.
+6. `collector/aside-collect.ts`의 lint 오류(no-explicit-any 4건) 정리하거나, naver 어댑터로 완전히 대체됐으면 파일 삭제 검토.
 
 ## 운영 메모
 

@@ -45,3 +45,11 @@ next-env.d.ts
 
 # 로컬 수집 실행 기록
 data/run-log.json
+
+# Firebase 서비스 계정 키(워커용) — 절대 커밋 금지
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+
+# aside 브라우저 핸드오프 (docs/aside-browser-handoff.md) — 검색 이력 포함 가능, 커밋 금지
+/aside-request.md
+/aside-result.md
