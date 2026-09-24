@@ -2,7 +2,7 @@
  * 탐색 버튼을 쓸 수 있는 계정. 화면 표시용 판정이며, 실제 강제는 Firestore 규칙(isRootAdmin)이
  * 하고 워커가 한 번 더 확인한다. 세 곳의 이메일이 같아야 한다 (docs/firebase-setup.md).
  */
-export const ALLOWED_EMAILS: readonly string[] = ["jongyouna@gmail.com"];
+export const ALLOWED_EMAILS: readonly string[] = ["jongyouna@naver.com"];
 
 export function isAllowedEmail(email: string | null | undefined): boolean {
   return !!email && ALLOWED_EMAILS.includes(email.toLowerCase());

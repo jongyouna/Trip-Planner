@@ -14,7 +14,7 @@
 
 1. **로그인 제공자**: Firebase 콘솔 > Authentication > Sign-in method에서 "이메일/비밀번호"를 켠다.
 2. **계정 생성**: Authentication > Users > "사용자 추가"에서 계정을 하나 직접 만든다. 이메일은 `lib/auth.ts`의
-   `ALLOWED_EMAILS`와 반드시 같아야 한다(현재 `jongyouna@gmail.com`). 앱 안에는 회원가입 화면이 없다 — 허용 계정이
+   `ALLOWED_EMAILS`와 반드시 같아야 한다(현재 `jongyouna@naver.com`). 앱 안에는 회원가입 화면이 없다 — 허용 계정이
    하나뿐이라 콘솔에서 수동으로만 만든다.
 3. **승인 도메인**: Firebase 콘솔 > Authentication > Settings > Authorized domains에 `jongyouna.github.io` 추가.
    (**완료** — 2026-09-22 확인. `localhost`는 기본 포함.)

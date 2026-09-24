@@ -17,7 +17,7 @@
 | 네이버 호텔/지도 (수동, aside) | aside 브라우저 핸드오프로 강원도 고성 즐겨찾기 숙소 26곳 1회 수집 완료 (`aside-result.md`) — 이제 위 정식 어댑터로 대체 예정 |
 | 지역 필터 | 야놀자는 미적용(다른 지역 숙소가 섞임). 네이버는 어댑터에 내장(주소에 `--region` 포함 여부) |
 | 열 제목 클릭 정렬 | 구현 (`lib/sort.ts`, URL `sort`·`dir`) |
-| Google 로그인 + 최저가 탐색 | 코드 구현·빌드 통과, **실환경 미검증** (Firestore 규칙 게시·서비스 계정 키·워커 실행 필요, `docs/firebase-setup.md`) |
+| 이메일/비밀번호 로그인 + 최저가 탐색 | 코드 구현·빌드 통과. 로그인 자체는 배포 사이트에서 provider 활성화 확인됨(2026-09-24). 탐색 job-queue는 **실환경 미검증** (Firestore 규칙 게시·서비스 계정 키·워커 실행 필요, `docs/firebase-setup.md`) |
 | 테스트 | 단위 테스트 45개 통과, 타입체크·lint(신규 파일 기준) 통과 |
 
 ## 한 일 (시간순)
@@ -62,8 +62,8 @@
     - `docs/firebase-setup.md`: 1회 설정에 "이메일/비밀번호 제공자 켜기" + "Authentication > Users에서 계정 수동 생성"(허용 이메일은 `ALLOWED_EMAILS`와 동일해야 함, 앱 안에 회원가입 화면 없음) 단계 추가, Google 제공자 관련 문구 제거.
     - `ALLOWED_EMAILS` 권한 검사, Firestore 규칙, 서비스 계정 키, `collector/worker.ts`는 그대로.
     - 검증: typecheck·lint(변경 파일 기준 클린, `aside-collect.ts` 기존 오류는 무관)·테스트 45개(로그인 오류 메시지 테스트 케이스 갱신)·정적 export 빌드 전부 통과. Chrome으로 `npm run dev` 열어 실제 잘못된 자격 증명 제출 → "이메일 또는 비밀번호가 올바르지 않습니다" 에러가 실제 Firebase 응답으로 뜨는 것까지 확인(=SDK 호출 자체는 정상 동작).
-    - **미완료**: Firebase 콘솔에서 이메일/비밀번호 제공자를 켜고 `jongyouna@gmail.com` 계정을 만드는 건 사용자 몫(다음 할 일 9번). 그 전까지는 올바른 자격 증명으로도 로그인 실패.
-    - 커밋·푸시·배포는 사용자 확인 후 진행.
+    - 커밋·푸시·배포 완료. 이후 사용자가 Firebase 콘솔에서 이메일/비밀번호 제공자를 켰다고 확인 — 배포 사이트(`https://jongyouna.github.io/Trip-Planner/`)에서 존재하지 않는 이메일로 로그인 시도해 에러가 `auth/operation-not-allowed`(제공자 꺼짐)가 아니라 "이메일 또는 비밀번호가 올바르지 않습니다"(제공자 켜짐 + invalid-credential)로 뜨는 것으로 간접 확인(실제 비밀번호는 입력 금지 규칙상 대신 로그인해 보지 않음 — 본인 계정 로그인 자체는 사용자가 직접 확인해야 함).
+16. **탐색 권한 이메일 변경: `jongyouna@gmail.com` → `jongyouna@naver.com` (2026-09-24)**: `lib/auth.ts`의 `ALLOWED_EMAILS`, `lib/jobs.test.ts`의 관련 테스트, `docs/firebase-setup.md`의 안내 문구를 새 이메일로 교체. `docs/firebase-setup.md`에 적혀 있듯 이메일이 같아야 하는 세 곳 중 이 리포가 관리하는 두 곳(`ALLOWED_EMAILS`, 문서)만 고쳤고, 나머지 두 가지는 이 리포 밖 — **사용자가 직접 해야 함**: (1) `buja-map-vercel/firestore.rules`의 `isRootAdmin()` 정의를 `jongyouna@naver.com` 기준으로 갱신하고 콘솔에 재게시, (2) Firebase Authentication > Users에서 `jongyouna@naver.com` 계정을 새로 만들거나 기존 `jongyouna@gmail.com` 계정 이메일을 변경(둘 다 두면 예전 계정으로는 이제 권한 화면 검사만 통과 못 하고 로그인 자체는 되니, 안 쓰는 계정은 정리 권장). 검증: typecheck·테스트 45개(갱신된 케이스 포함) 통과. 커밋·푸시는 사용자 확인 후.
 
 ## 확인된 사실
 
@@ -111,7 +111,9 @@
 6. `collector/aside-collect.ts`의 lint 오류(no-explicit-any 4건) 정리하거나, naver 어댑터로 완전히 대체됐으면 파일 삭제 검토.
 7. (Trip-Planner 코드 무관, 환경) `taste-skill` 마켓플레이스가 `~/.claude/settings.json`엔 등록됐지만 실제 캐시·동기화가 안 되는 문제 원인 파악 — Claude Code 업데이트/재시작으로 해결되는지, 아니면 수동 `marketplace add`가 필요한지 확인.
 8. 이번 리디자인 라이트 모드·375px 모바일 화면 실제로 눈으로 확인(개발자도구 또는 실기기) — 브라우저 자동화로는 확인 못 함(위 14번 참고).
-9. Firebase 콘솔에서 이메일/비밀번호 로그인 제공자 켜고 `jongyouna@gmail.com` 계정 실제로 생성(아래 15번, `docs/firebase-setup.md` 1·2번) — 아직 안 했으면 로그인 자체가 항상 "이메일 또는 비밀번호가 올바르지 않습니다"로 실패한다.
+9. (완료 확인됨, 2026-09-24) Firebase 이메일/비밀번호 제공자 활성화 — 배포 사이트에서 간접 확인.
+10. `jongyouna@naver.com`으로 실제 로그인되는지 사용자가 직접 확인(계정이 그 이메일로 있는지, 위 16번 두 가지 리포 밖 작업 포함) — 비밀번호 대행 입력 금지 규칙상 이 세션에서는 확인 불가.
+11. `buja-map-vercel/firestore.rules`의 `isRootAdmin()`을 `jongyouna@naver.com` 기준으로 갱신·재게시(위 16번, 이 리포 밖).
 
 ## 운영 메모
 

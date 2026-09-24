@@ -56,9 +56,9 @@ describe("날짜 계산", () => {
 
 describe("auth 유틸", () => {
   it("허용 이메일만 통과(대소문자 무시)", () => {
-    expect(isAllowedEmail("jongyouna@gmail.com")).toBe(true);
-    expect(isAllowedEmail("JongYouna@Gmail.com")).toBe(true);
-    expect(isAllowedEmail("other@gmail.com")).toBe(false);
+    expect(isAllowedEmail("jongyouna@naver.com")).toBe(true);
+    expect(isAllowedEmail("JongYouna@Naver.com")).toBe(true);
+    expect(isAllowedEmail("other@naver.com")).toBe(false);
     expect(isAllowedEmail(null)).toBe(false);
   });
 
