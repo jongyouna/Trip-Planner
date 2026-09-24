@@ -10,6 +10,8 @@ import {
 import { useMemo } from "react";
 import { type Hotel, SITES, SITE_LABEL, hotelKey, score10 } from "@/lib/schema";
 import { SORT_DIRS, SORT_KEYS, type SortKey, nextSort, sortHotels } from "@/lib/sort";
+import { cardClass, inputClass, linkClass } from "@/lib/ui";
+import { ChevronIcon, ExternalLinkIcon } from "./icons";
 
 const filterParsers = {
   maxPrice: parseAsInteger.withDefault(50000),
@@ -35,9 +37,6 @@ const COLUMNS: { key: SortKey | null; label: string; right?: boolean }[] = [
 
 const won = new Intl.NumberFormat("ko-KR");
 
-const inputClass =
-  "w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900";
-
 export function HotelTable({ hotels }: { hotels: Hotel[] }) {
   const [f, setF] = useQueryStates(filterParsers);
 
@@ -61,8 +60,8 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
   const lowest = rows.length > 0 ? Math.min(...rows.map((h) => h.price)) : null;
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <section className="flex flex-col gap-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <label className="text-xs">
           최대 가격(원)
           <input
@@ -132,12 +131,12 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
         </label>
       </div>
 
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        조건 충족 <strong>{rows.length}</strong>곳
+      <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+        조건 충족 <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{rows.length}</strong>곳
         {lowest !== null && (
           <>
             {" "}
-            · 최저가 <strong>{won.format(lowest)}원</strong>
+            · 최저가 <strong className="font-semibold text-accent">{won.format(lowest)}원</strong>
           </>
         )}
       </p>
@@ -159,23 +158,20 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
         </label>
         <button
           type="button"
-          className="mt-4 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700"
+          className="mt-4 flex items-center justify-center rounded-md border border-zinc-300 px-2 py-1.5 transition-colors hover:bg-zinc-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:border-zinc-700 dark:hover:bg-zinc-800"
           onClick={() => setF({ dir: f.dir === "asc" ? "desc" : "asc" })}
           aria-label={f.dir === "asc" ? "오름차순" : "내림차순"}
         >
-          {f.dir === "asc" ? "▲" : "▼"}
+          <ChevronIcon direction={f.dir === "asc" ? "up" : "down"} className="h-3 w-3" />
         </button>
       </div>
 
       <div className="flex flex-col gap-3 sm:hidden">
         {rows.map((h) => (
-          <div
-            key={hotelKey(h)}
-            className="rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-          >
+          <div key={hotelKey(h)} className={cardClass}>
             <div className="flex items-start justify-between gap-2">
               <span className="font-medium">{h.name}</span>
-              <span className="whitespace-nowrap text-right">
+              <span className="whitespace-nowrap text-right tabular-nums">
                 {won.format(h.price)}원
                 {h.priceNote && <div className="text-xs text-zinc-500">{h.priceNote}</div>}
               </span>
@@ -184,7 +180,7 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
               {h.checkin.slice(5)} ~ {h.checkout.slice(5)} · {SITE_LABEL[h.site]}
             </div>
             <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{h.address ?? "-"}</div>
-            <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+            <div className="mt-1 text-xs tabular-nums text-zinc-600 dark:text-zinc-400">
               평점 {h.reviewScore === null ? "-" : `${h.reviewScore}/${h.reviewScoreMax}`} · 리뷰{" "}
               {h.reviewCount === null ? "-" : won.format(h.reviewCount)}
             </div>
@@ -192,14 +188,16 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
               href={h.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block text-blue-600 underline dark:text-blue-400"
+              className={`mt-2 inline-flex items-center gap-1 ${linkClass}`}
             >
               예약 페이지
+              <ExternalLinkIcon className="h-3 w-3" />
             </a>
           </div>
         ))}
         {rows.length === 0 && (
-          <p className="py-8 text-center text-sm text-zinc-500">
+          <p className="flex flex-col items-center gap-1 py-8 text-center text-sm text-zinc-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent/60" aria-hidden />
             조건에 맞는 숙소가 없습니다. 필터를 조정해 보세요.
           </p>
         )}
@@ -223,8 +221,8 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
                     ) : (
                       <button
                         type="button"
-                        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
-                          active ? "font-bold text-zinc-900 dark:text-zinc-100" : ""
+                        className={`inline-flex items-center gap-1 rounded-sm transition-colors hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:hover:text-zinc-100 ${
+                          active ? "font-semibold text-accent" : ""
                         }`}
                         onClick={() => {
                           const next = nextSort({ key: f.sort, dir: f.dir }, c.key!);
@@ -232,9 +230,7 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
                         }}
                       >
                         {c.label}
-                        <span aria-hidden className="w-3 text-[10px]">
-                          {active ? (f.dir === "asc" ? "▲" : "▼") : ""}
-                        </span>
+                        {active && <ChevronIcon direction={f.dir === "asc" ? "up" : "down"} className="h-2.5 w-2.5" />}
                       </button>
                     )}
                   </th>
@@ -246,32 +242,28 @@ export function HotelTable({ hotels }: { hotels: Hotel[] }) {
             {rows.map((h) => (
               <tr
                 key={hotelKey(h)}
-                className="border-b border-zinc-200 dark:border-zinc-800"
+                className="border-b border-zinc-200 transition-colors hover:bg-zinc-100/70 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
               >
                 <td className="py-2 pr-3 font-medium">{h.name}</td>
                 <td className="py-2 pr-3">{SITE_LABEL[h.site]}</td>
-                <td className="py-2 pr-3 whitespace-nowrap">
+                <td className="py-2 pr-3 whitespace-nowrap tabular-nums">
                   {h.checkin.slice(5)} ~ {h.checkout.slice(5)}
                 </td>
                 <td className="py-2 pr-3">{h.address ?? "-"}</td>
-                <td className="py-2 pr-3 text-right whitespace-nowrap">
+                <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
                   {won.format(h.price)}원
                   {h.priceNote && <div className="text-xs text-zinc-500">{h.priceNote}</div>}
                 </td>
-                <td className="py-2 pr-3 text-right">
+                <td className="py-2 pr-3 text-right tabular-nums">
                   {h.reviewScore === null ? "-" : `${h.reviewScore}/${h.reviewScoreMax}`}
                 </td>
-                <td className="py-2 pr-3 text-right">
+                <td className="py-2 pr-3 text-right tabular-nums">
                   {h.reviewCount === null ? "-" : won.format(h.reviewCount)}
                 </td>
                 <td className="py-2">
-                  <a
-                    href={h.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline dark:text-blue-400"
-                  >
+                  <a href={h.url} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1 ${linkClass}`}>
                     예약 페이지
+                    <ExternalLinkIcon className="h-3 w-3" />
                   </a>
                 </td>
               </tr>

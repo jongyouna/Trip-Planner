@@ -15,7 +15,7 @@ export function StaleBadge({ updatedAt }: { updatedAt: string }) {
   );
   if (!stale) return null;
   return (
-    <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-amber-800">
+    <span className="ml-2 rounded-md bg-amber-100 px-2 py-0.5 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
       {STALE_HOURS}시간 넘음 · 가격이 달라졌을 수 있음
     </span>
   );

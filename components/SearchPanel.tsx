@@ -14,10 +14,9 @@ import {
   todayKst,
 } from "@/lib/jobs";
 import { type Hotel, HotelSchema } from "@/lib/schema";
+import { inputClass, linkClass, panelClass, primaryButtonClass } from "@/lib/ui";
 import { useAuth } from "./AuthProvider";
 
-const inputClass =
-  "w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ResultsMeta {
@@ -158,15 +157,15 @@ export function SearchPanel({ onResults }: { onResults: (hotels: Hotel[]) => voi
   const busy = submitting || isActive(job?.status);
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-zinc-200 p-4 dark:border-zinc-800">
-      <h2 className="text-sm font-semibold">최저가 탐색</h2>
+    <section className={`flex flex-col gap-3 ${panelClass}`}>
+      <h2 className="text-sm font-semibold tracking-tight">최저가 탐색</h2>
 
       {loading && <p className="text-xs text-zinc-500">로그인 확인 중…</p>}
 
       {!loading && !user && (
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
           로그인한 사용자만 탐색할 수 있습니다.{" "}
-          <button type="button" className="text-blue-600 underline dark:text-blue-400" onClick={signIn}>
+          <button type="button" className={linkClass} onClick={signIn}>
             Google로 로그인
           </button>
           {authError && <span className="ml-2 text-red-600 dark:text-red-400">{authError}</span>}
@@ -233,11 +232,7 @@ export function SearchPanel({ onResults }: { onResults: (hotels: Hotel[]) => voi
           )}
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded bg-zinc-900 px-4 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-            >
+            <button type="submit" disabled={busy} className={primaryButtonClass}>
               {busy ? "탐색 중…" : "최저가 탐색"}
             </button>
             {job && (

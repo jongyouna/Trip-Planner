@@ -8,12 +8,12 @@ export default function Home() {
   const { hotels, updatedAt } = loadHotels();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:py-10">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-bold">가성비 숙소 대시보드</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">가성비 숙소 대시보드</h1>
         <AuthButton />
       </header>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs tabular-nums text-zinc-500">
         마지막 수집 {new Date(updatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
         <StaleBadge updatedAt={updatedAt} />
       </p>
