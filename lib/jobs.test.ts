@@ -62,8 +62,9 @@ describe("auth 유틸", () => {
     expect(isAllowedEmail(null)).toBe(false);
   });
 
-  it("사용자가 팝업을 닫은 오류는 메시지 없음, 승인 도메인 오류는 안내", () => {
-    expect(authErrorMessage("auth/popup-closed-by-user")).toBeNull();
-    expect(authErrorMessage("auth/unauthorized-domain")).toContain("Authorized domains");
+  it("이메일/비밀번호 오류 코드를 안내 문구로 바꾼다", () => {
+    expect(authErrorMessage("auth/invalid-credential")).toContain("이메일 또는 비밀번호");
+    expect(authErrorMessage("auth/too-many-requests")).toContain("잠시 후");
+    expect(authErrorMessage(undefined)).toContain("로그인하지 못했습니다");
   });
 });

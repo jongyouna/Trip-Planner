@@ -14,7 +14,7 @@ import {
   todayKst,
 } from "@/lib/jobs";
 import { type Hotel, HotelSchema } from "@/lib/schema";
-import { inputClass, linkClass, panelClass, primaryButtonClass } from "@/lib/ui";
+import { inputClass, panelClass, primaryButtonClass } from "@/lib/ui";
 import { useAuth } from "./AuthProvider";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -53,7 +53,7 @@ function useClock(): { today: string; now: number } {
 }
 
 export function SearchPanel({ onResults }: { onResults: (hotels: Hotel[]) => void }) {
-  const { user, loading, error: authError, signIn } = useAuth();
+  const { user, loading } = useAuth();
   const allowed = !!user && user.emailVerified && isAllowedEmail(user.email);
   const uid = user?.uid;
 
@@ -163,13 +163,7 @@ export function SearchPanel({ onResults }: { onResults: (hotels: Hotel[]) => voi
       {loading && <p className="text-xs text-zinc-500">로그인 확인 중…</p>}
 
       {!loading && !user && (
-        <p className="text-xs text-zinc-600 dark:text-zinc-400">
-          로그인한 사용자만 탐색할 수 있습니다.{" "}
-          <button type="button" className={linkClass} onClick={signIn}>
-            Google로 로그인
-          </button>
-          {authError && <span className="ml-2 text-red-600 dark:text-red-400">{authError}</span>}
-        </p>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">로그인한 사용자만 탐색할 수 있습니다. 상단에서 로그인하세요.</p>
       )}
 
       {!loading && user && !allowed && (

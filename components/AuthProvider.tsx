@@ -1,10 +1,9 @@
 "use client";
 
 import {
-  GoogleAuthProvider,
   type User,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from "firebase/auth";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -16,7 +15,7 @@ interface AuthState {
   /** 로그인 상태를 아직 모르는 동안 true */
   loading: boolean;
   error: string | null;
-  signIn: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -40,10 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (email: string, password: string) => {
     setError(null);
     try {
-      await signInWithPopup(getFirebase().auth, new GoogleAuthProvider());
+      await signInWithEmailAndPassword(getFirebase().auth, email, password);
     } catch (e) {
       setError(authErrorMessage((e as { code?: string }).code));
     }

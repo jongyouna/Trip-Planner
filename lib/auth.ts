@@ -8,17 +8,17 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
   return !!email && ALLOWED_EMAILS.includes(email.toLowerCase());
 }
 
-/** 조용히 무시할 팝업 오류(사용자가 창을 닫음 등) */
-const SILENT_CODES = new Set(["auth/popup-closed-by-user", "auth/cancelled-popup-request"]);
-
-/** Firebase Auth 오류 코드를 사용자에게 보여 줄 문구로 바꾼다. 무시할 오류는 null. */
-export function authErrorMessage(code: string | undefined): string | null {
-  if (code && SILENT_CODES.has(code)) return null;
+/** Firebase Auth(이메일/비밀번호) 오류 코드를 사용자에게 보여 줄 문구로 바꾼다. */
+export function authErrorMessage(code: string | undefined): string {
   switch (code) {
-    case "auth/unauthorized-domain":
-      return "이 주소가 Firebase 승인 도메인에 없습니다. Firebase 콘솔 > Authentication > Settings > Authorized domains에 추가하세요.";
-    case "auth/popup-blocked":
-      return "브라우저가 로그인 팝업을 막았습니다. 팝업을 허용한 뒤 다시 시도하세요.";
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "이메일 또는 비밀번호가 올바르지 않습니다.";
+    case "auth/invalid-email":
+      return "이메일 형식이 올바르지 않습니다.";
+    case "auth/too-many-requests":
+      return "시도가 너무 많습니다. 잠시 후 다시 시도하세요.";
     case "auth/network-request-failed":
       return "네트워크 오류로 로그인하지 못했습니다.";
     default:

@@ -54,6 +54,16 @@
     - 데이터 로직(`lib/*`, `collector/*`, nuqs 필터·정렬, Firebase auth)은 전혀 건드리지 않음. 새 UI 라이브러리·Tailwind 버전 변경 없음(`redesign-skill` 규칙대로 기존 스택 유지).
     - 검증: `npm run typecheck`·`npm test`(45개 통과)·`npm run lint`(클린)·`npm run build`(정적 export 통과) 전부 통과. Chrome으로 `npm run dev` 직접 열어 다크 모드 데스크톱 화면 확인(액센트·아이콘·hover 정상 렌더). **라이트 모드·375px 모바일 폭은 브라우저 자동화 도구 제약(리사이즈가 실제 뷰포트에 반영 안 됨)으로 눈으로 확인 못 함** — CSS 값 자체는 정의돼 있고 breakpoint 로직(`sm:hidden`/`hidden sm:block`)은 안 건드렸으니 노트 12에서 이미 확인된 그대로일 것으로 보이나, 배포 전 실기기/개발자도구로 재확인 권장.
     - 커밋은 안 함 — 작업 트리에만 반영, 사용자 확인 후 커밋 여부 결정.
+15. **Google 로그인 → 이메일/비밀번호 로그인 전환 (2026-09-24)**: 사용자 요청. 목적은 "Firestore 등 외부 설정 최소화"였는데, 확인해 보니 Firestore 규칙·서비스 계정 키·자택 PC 워커는 "최저가 탐색" job-queue(`searchJobs`/`searchResults`)용이라 로그인 방식과 무관 — 바꿔도 그대로 필요함을 사용자에게 확인받고, "로그인 방식만 교체"로 스코프 확정(실제로 없어지는 건 Google Cloud OAuth 동의 화면 설정과 팝업 관련 이슈뿐).
+    - `components/AuthProvider.tsx`: `signInWithPopup(GoogleAuthProvider)` → `signInWithEmailAndPassword`. `signIn()` 시그니처가 `signIn(email, password)`로 바뀜.
+    - `components/AuthButton.tsx`: 원클릭 버튼 → 헤더에 이메일·비밀번호 인라인 폼(제출 시 로딩 disable, 에러는 폼 아래 표시). 로그인된 상태 UI는 그대로.
+    - `components/SearchPanel.tsx`: 자체 로그인 버튼 제거, "상단에서 로그인하세요" 안내 문구만 남김(로그인 폼을 한 곳에만 두기 위함). `authError` 관련 코드도 정리.
+    - `lib/auth.ts`: `authErrorMessage`를 이메일/비밀번호 에러 코드(`invalid-credential`/`wrong-password`/`user-not-found`/`invalid-email`/`too-many-requests`) 기준으로 재작성, 팝업 전용 `SILENT_CODES`·`unauthorized-domain` 케이스 제거. 반환 타입이 `string | null` → `string`(더 이상 무시할 팝업 취소 케이스가 없음).
+    - `docs/firebase-setup.md`: 1회 설정에 "이메일/비밀번호 제공자 켜기" + "Authentication > Users에서 계정 수동 생성"(허용 이메일은 `ALLOWED_EMAILS`와 동일해야 함, 앱 안에 회원가입 화면 없음) 단계 추가, Google 제공자 관련 문구 제거.
+    - `ALLOWED_EMAILS` 권한 검사, Firestore 규칙, 서비스 계정 키, `collector/worker.ts`는 그대로.
+    - 검증: typecheck·lint(변경 파일 기준 클린, `aside-collect.ts` 기존 오류는 무관)·테스트 45개(로그인 오류 메시지 테스트 케이스 갱신)·정적 export 빌드 전부 통과. Chrome으로 `npm run dev` 열어 실제 잘못된 자격 증명 제출 → "이메일 또는 비밀번호가 올바르지 않습니다" 에러가 실제 Firebase 응답으로 뜨는 것까지 확인(=SDK 호출 자체는 정상 동작).
+    - **미완료**: Firebase 콘솔에서 이메일/비밀번호 제공자를 켜고 `jongyouna@gmail.com` 계정을 만드는 건 사용자 몫(다음 할 일 9번). 그 전까지는 올바른 자격 증명으로도 로그인 실패.
+    - 커밋·푸시·배포는 사용자 확인 후 진행.
 
 ## 확인된 사실
 
@@ -101,6 +111,7 @@
 6. `collector/aside-collect.ts`의 lint 오류(no-explicit-any 4건) 정리하거나, naver 어댑터로 완전히 대체됐으면 파일 삭제 검토.
 7. (Trip-Planner 코드 무관, 환경) `taste-skill` 마켓플레이스가 `~/.claude/settings.json`엔 등록됐지만 실제 캐시·동기화가 안 되는 문제 원인 파악 — Claude Code 업데이트/재시작으로 해결되는지, 아니면 수동 `marketplace add`가 필요한지 확인.
 8. 이번 리디자인 라이트 모드·375px 모바일 화면 실제로 눈으로 확인(개발자도구 또는 실기기) — 브라우저 자동화로는 확인 못 함(위 14번 참고).
+9. Firebase 콘솔에서 이메일/비밀번호 로그인 제공자 켜고 `jongyouna@gmail.com` 계정 실제로 생성(아래 15번, `docs/firebase-setup.md` 1·2번) — 아직 안 했으면 로그인 자체가 항상 "이메일 또는 비밀번호가 올바르지 않습니다"로 실패한다.
 
 ## 운영 메모
 
