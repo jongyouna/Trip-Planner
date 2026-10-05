@@ -1,6 +1,6 @@
 # 진행 기록 (progress)
 
-마지막 업데이트: 2026-09-24
+마지막 업데이트: 2026-10-06
 
 ## 목표
 여행마다 야놀자·네이버 호텔·Trip.com 등에 흩어진 숙소를 따로 열어 보는 불편을 줄인다. 로컬 PC 브라우저로 지역·날짜·가격 조건에 맞는 숙소를 모아 `data/hotels.json`에 저장하고, 웹 대시보드로 본다. 수집 항목은 숙소명, 예약 가능 날짜, 주소, 가격, 리뷰 수, 리뷰 점수, 예약 링크.
@@ -64,6 +64,8 @@
     - 검증: typecheck·lint(변경 파일 기준 클린, `aside-collect.ts` 기존 오류는 무관)·테스트 45개(로그인 오류 메시지 테스트 케이스 갱신)·정적 export 빌드 전부 통과. Chrome으로 `npm run dev` 열어 실제 잘못된 자격 증명 제출 → "이메일 또는 비밀번호가 올바르지 않습니다" 에러가 실제 Firebase 응답으로 뜨는 것까지 확인(=SDK 호출 자체는 정상 동작).
     - 커밋·푸시·배포 완료. 이후 사용자가 Firebase 콘솔에서 이메일/비밀번호 제공자를 켰다고 확인 — 배포 사이트(`https://jongyouna.github.io/Trip-Planner/`)에서 존재하지 않는 이메일로 로그인 시도해 에러가 `auth/operation-not-allowed`(제공자 꺼짐)가 아니라 "이메일 또는 비밀번호가 올바르지 않습니다"(제공자 켜짐 + invalid-credential)로 뜨는 것으로 간접 확인(실제 비밀번호는 입력 금지 규칙상 대신 로그인해 보지 않음 — 본인 계정 로그인 자체는 사용자가 직접 확인해야 함).
 16. **탐색 권한 이메일 변경: `jongyouna@gmail.com` → `jongyouna@naver.com` (2026-09-24)**: `lib/auth.ts`의 `ALLOWED_EMAILS`, `lib/jobs.test.ts`의 관련 테스트, `docs/firebase-setup.md`의 안내 문구를 새 이메일로 교체. `docs/firebase-setup.md`에 적혀 있듯 이메일이 같아야 하는 세 곳 중 이 리포가 관리하는 두 곳(`ALLOWED_EMAILS`, 문서)만 고쳤고, 나머지 두 가지는 이 리포 밖 — **사용자가 직접 해야 함**: (1) `buja-map-vercel/firestore.rules`의 `isRootAdmin()` 정의를 `jongyouna@naver.com` 기준으로 갱신하고 콘솔에 재게시, (2) Firebase Authentication > Users에서 `jongyouna@naver.com` 계정을 새로 만들거나 기존 `jongyouna@gmail.com` 계정 이메일을 변경(둘 다 두면 예전 계정으로는 이제 권한 화면 검사만 통과 못 하고 로그인 자체는 되니, 안 쓰는 계정은 정리 권장). 검증: typecheck·테스트 45개(갱신된 케이스 포함) 통과. 커밋·푸시는 사용자 확인 후.
+17. **탐색 권한 검증을 Firestore 규칙에서 분리 — 방향 결정, 구현 전 (2026-09-24~25)**: 16번 직후 `bujamap-vercel/firestore.rules`를 실제로 읽어 보니 `searchJobs`/`searchResults` 규칙이 아예 없고 맨 끝에 `match /{document=**} { allow read, write: if false; }`가 있음 — 즉 탐색 기능의 Firestore 쓰기는 이메일과 무관하게 지금도 100% 막혀 있고(문서에만 있고 게시된 적 없음), `isRootAdmin()`은 그 리포 관리자 탭용 함수. 사용자 요청: "실제 강제를 Firestore 규칙이 아니라 자체 구현, 다른 리포에 영향 주기 싫음". Firestore 규칙은 프로젝트 단일 파일이라 같은 프로젝트(`buja-map-b52eb`)를 쓰는 한 불가능 → 사용자가 **Trip-Planner 전용 Firebase 프로젝트 새로 생성**을 선택. `collector/worker.ts`는 이미 Firebase Auth 이메일을 직접 재확인(`isAllowedEmail`)하므로 그게 "자체 강제"이고, 새 프로젝트의 `firestore.rules`는 admin 판단 없이 본인 uid 문서 소유권만 확인하도록 최소화하는 계획(플랜 승인됨, **코드 변경은 아직 안 함** — 새 프로젝트의 `firebaseConfig`·프로젝트 ID를 받아야 `lib/firebase.ts`·`collector/worker.ts`를 채울 수 있음). 주의: 지난번 공유 프로젝트에 켠 이메일/비밀번호 제공자·`jongyouna@naver.com` 계정은 Auth 사용자 풀이 프로젝트별이라 새 프로젝트에서 다시 해야 함. 사용자가 콘솔에서 할 일 9단계 목록은 이 세션의 플랜 파일(`~/.claude/plans/tingly-honking-dahl.md`)에 있음 — 구현 시 `docs/firebase-setup.md` 재작성·`CLAUDE.md` 두 줄(`buja-map-b52eb`, `buja-map-vercel/firestore.rules` 공유 문구) 수정 필요.
+18. **chrome-devtools MCP를 사용자 실제 Chrome에 연결 (2026-10-06)**: Trip-Planner 코드와 무관, 환경 설정. `chrome-devtools` MCP는 이미 `~/.claude.json`에 등록돼 있었으나(`cmd /c npx -y chrome-devtools-mcp@latest`) 전용 프로필(`~/.cache/chrome-devtools-mcp/chrome-profile`)을 다른 Chrome 인스턴스가 잡고 있어 `list_pages`가 "The browser is already running" 오류. `--isolated`를 시도하려다 사용자가 별도 Chrome 대신 **실제 사용 중인 Chrome**에서 작업하길 원해 `--autoConnect`로 교체(args: `cmd /c npx -y chrome-devtools-mcp@latest --autoConnect`, 백업 `~/.claude.json.bak-chrome-devtools`). 전제: Chrome 144+(현재 154), `chrome://inspect/#remote-debugging`에서 원격 디버깅 허용, Claude Code 재시작(MCP 서버는 시작 시 로드), 첫 호출 때 Chrome의 연결 허용 팝업 승인(승인 전엔 호출이 120초+ 대기하다 백그라운드로 넘어감). 재시작 후 `list_pages` 성공 확인(탭 4개 조회). 실제 Chrome에 붙으므로 로그인 세션·쿠키 접근 가능 — 민감 계정 탭을 열어 둔 채 쓰지 않고, 작업은 기존 탭을 건드리지 말고 `new_page`로 새 탭에서 할 것.
 
 ## 확인된 사실
 
@@ -102,7 +104,7 @@
 
 ## 다음 할 일
 
-0. 로그인·탐색 실환경 검증: `buja-map-vercel/firestore.rules`에 `searchJobs`·`searchResults` 블록 병합·게시, 서비스 계정 키 발급(리포 밖 보관), `npm run worker` 실행 후 웹에서 탐색. 다박(2박 이상) 검색 시 야놀자 `discountPrice`가 1박 기준인지 합계인지 확인(`price`는 "1박 총액" 의미).
+0. 로그인·탐색 실환경 검증(위 10·11번 새 전용 프로젝트 기준): 서비스 계정 키 발급(리포 밖 보관), `npm run worker` 실행 후 웹에서 탐색. 다박(2박 이상) 검색 시 야놀자 `discountPrice`가 1박 기준인지 합계인지 확인(`price`는 "1박 총액" 의미).
 1. 지역 필터: 주소에 지역명이 포함된 숙소만 남기고 재수집 후 푸시.
 2. Trip.com 다음 페이지 문제 원인 확인 (사용자 Chrome에서 직접 열어 동작 비교 등). 막히면 야놀자만 유지.
 3. 다른 날짜·지역 수집 (같은 사이트·숙소·날짜는 덮어쓰고 날짜가 다르면 별개 항목으로 누적).
@@ -112,8 +114,9 @@
 7. (Trip-Planner 코드 무관, 환경) `taste-skill` 마켓플레이스가 `~/.claude/settings.json`엔 등록됐지만 실제 캐시·동기화가 안 되는 문제 원인 파악 — Claude Code 업데이트/재시작으로 해결되는지, 아니면 수동 `marketplace add`가 필요한지 확인.
 8. 이번 리디자인 라이트 모드·375px 모바일 화면 실제로 눈으로 확인(개발자도구 또는 실기기) — 브라우저 자동화로는 확인 못 함(위 14번 참고).
 9. (완료 확인됨, 2026-09-24) Firebase 이메일/비밀번호 제공자 활성화 — 배포 사이트에서 간접 확인.
-10. `jongyouna@naver.com`으로 실제 로그인되는지 사용자가 직접 확인(계정이 그 이메일로 있는지, 위 16번 두 가지 리포 밖 작업 포함) — 비밀번호 대행 입력 금지 규칙상 이 세션에서는 확인 불가.
-11. `buja-map-vercel/firestore.rules`의 `isRootAdmin()`을 `jongyouna@naver.com` 기준으로 갱신·재게시(위 16번, 이 리포 밖).
+10. (17번으로 대체) 공유 프로젝트 대신 Trip-Planner 전용 Firebase 프로젝트를 만드는 방향으로 확정. 사용자가 콘솔에서 새 프로젝트 생성 → Firestore·이메일/비밀번호 제공자 활성화 → `jongyouna@naver.com` 계정 생성 → 승인 도메인 `jongyouna.github.io` 추가 → 웹 앱 `firebaseConfig` 값 전달. 값을 받으면 `lib/firebase.ts`·`collector/worker.ts`(`PROJECT_ID`)·`docs/firebase-setup.md`·`CLAUDE.md`를 갱신하고 이 리포에 `firestore.rules` 신규 추가.
+11. 새 프로젝트에서 `firestore.rules`(이 리포) 콘솔 게시, 서비스 계정 키 발급(리포 밖 보관), `npm run worker` 실행 후 실제 탐색 검증. 로그인 자체는 비밀번호 대행 입력 금지 규칙상 사용자가 직접 확인.
+12. (선택) 기존 공유 프로젝트(`buja-map-b52eb`)에 켰던 이메일/비밀번호 제공자·`jongyouna@naver.com` 계정 정리 — 그 프로젝트의 다른 앱은 Google 로그인만 씀.
 
 ## 운영 메모
 
