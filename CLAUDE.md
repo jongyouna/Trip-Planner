@@ -55,7 +55,7 @@
 - 사이트 검색이 아니라 **로그인 계정의 즐겨찾기(저장) '숙소' 폴더** 중 주소에 `--region`이 들어간 항목만 수집한다(`collector/sites/naver.ts`). 로그인 필요(`.browser-profile/`에 세션 유지, 없으면 첫 실행 시 열린 창에서 최대 2분 대기).
 - 목록: `GET /p/api/bookmark`(같은 출처 fetch, `map.naver.com`). 정확한 응답 스키마를 강하게 고정하지 않고 `name`+`sid` 짝을 재귀적으로 훑는다 — 계정/버전마다 폴더 구조가 다를 수 있어서다. 항목이 0건이면 구조 변경으로 보고 오류를 던진다.
 - 숙소 판별은 `mcid === "ACCOMMODATION"`(있으면 우선), 없으면 이름 키워드. `mcid`가 `CAR`(주차장) 등 다른 값이면 제외.
-- 가격: 펜션/게스트하우스는 `https://pcmap.place.naver.com/accommodation/{sid}/room?startDate=...&endDate=...`(캘린더 조작 없이 날짜 쿼리로 바로 반영, 아이프레임 부모 경유 불필요 — 확인됨). 가격이 없으면(체인 호텔·리조트) `https://hotels.naver.com/accommodation/search/detail/domestic/{sid}/rates?dAdultCnt=2&dCheckIn=...&dCheckOut=...`로 재시도.
+- 가격: 펜션/게스트하우스는 `https://pcmap.place.naver.com/accommodation/{sid}/room?checkin=YYYYMMDD&checkout=YYYYMMDD&guest=2`(날짜 쿼리는 `checkin`/`checkout`/`guest`. 예전 `startDate`/`endDate`는 날짜가 반영되지 않음 — 2026-10-06 확인. 캘린더 조작 불필요). 가격이 없으면(체인 호텔·리조트) `https://hotels.naver.com/accommodation/search/detail/domestic/{sid}/rates?dAdultCnt=2&dCheckIn=...&dCheckOut=...`로 재시도.
 - 가격을 못 찾으면(전화·인스타그램 DM 예약, 지자체 공공캠핑 전용 시스템 등) 그 숙소는 제외한다 — 야놀자 "숙박 가격 없으면 제외" 원칙과 동일.
 - 이 경로는 Playwright 수집기(`collector/core.ts`)로, 브라우저 검색 규칙(위)의 Claude 인터랙티브 브라우저 탐색과는 별개다 — 차단 이력 없음(그 차단은 크롬 확장의 사이트 안전 정책이었고, 여기는 그 확장을 거치지 않는다).
 - `collector/aside-collect.ts`는 이 어댑터 이전에 Antigravity가 만든 1회성 독립 스크립트(로그인 대기 포함, `aside-result.md` 직접 작성). 지금은 `collector/sites/naver.ts` + `npm run collect -- --sites naver`가 정식 경로다.
