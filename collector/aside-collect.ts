@@ -243,7 +243,7 @@ async function fetchPlacePricing(context: BrowserContext, item: BookmarkItem): P
   console.log(`\n>> [${item.name}] 가격 및 상세 정보 조회 중...`);
 
   // Target accommodation room/booking URL
-  const bookingUrl = `https://pcmap.place.naver.com/accommodation/${item.id}/room?startDate=${CHECKIN}&endDate=${CHECKOUT}`;
+  const bookingUrl = `https://pcmap.place.naver.com/accommodation/${item.id}/room?checkin=${CHECKIN.replaceAll("-", "")}&checkout=${CHECKOUT.replaceAll("-", "")}&guest=2`;
   const homeUrl = `https://pcmap.place.naver.com/accommodation/${item.id}/home`;
 
   let price = "확인 불가";

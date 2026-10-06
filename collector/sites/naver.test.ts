@@ -5,24 +5,77 @@ import {
   isAccommodationBookmark,
   naverHotelUrl,
   naverPlaceUrl,
-  parsePriceKRW,
+  parseHotelPagePrice,
+  parseRoomPagePrice,
   toHotel,
 } from "./naver";
 
 const q = { region: "강원 고성", checkin: "2026-10-05", checkout: "2026-10-06", maxPrice: 200000 };
 const at = "2026-09-23T11:48:00.000Z";
 
-describe("naver parsePriceKRW", () => {
-  it("가격 텍스트에서 숫자를 뽑는다", () => {
-    expect(parsePriceKRW("객실 최저가 150,000원~ 안내")).toBe(150000);
+// 아래 텍스트는 2026-10-06 실제 페이지(10/10 1박 2명)의 형태를 줄여 옮긴 것.
+describe("naver parseRoomPagePrice (pcmap /room)", () => {
+  const withMarker = (...rows: string[]) => ["선택하신 조건으로 검색한 결과입니다.", ...rows, "이용약관"].join("\n");
+
+  it("객실 목록은 가격만 있는 줄 중 최저가를 쓴다 (첫 금액이 아님)", () => {
+    const text = withMarker(
+      "나폴리 &밀라노(2&3층랜덤) 기준2인요금",
+      "189,000원",
+      "네이버페이",
+      "로베소카(2&3층랜덤) 기준2인요금",
+      "179,000원",
+      "최대 1,790원 적립",
+    );
+    expect(parseRoomPagePrice(text)).toBe(179000);
   });
 
-  it("천 단위 콤마 없는 큰 수는 매칭하지 않는다(사이트 표기 형식 그대로 신뢰)", () => {
-    expect(parsePriceKRW("가격 안내 준비중")).toBeNull();
+  it("일부 객실만 예약마감이어도 나머지 객실 가격이 있으면 예약 가능", () => {
+    const text = withMarker("로베소카 기준2인요금", "179,000원", "예약마감", "12호 피렌체(기준2인요금)");
+    expect(parseRoomPagePrice(text)).toBe(179000);
   });
 
-  it("예약 마감이면 가격이 있어도 null", () => {
-    expect(parsePriceKRW("40,000원 예약 마감")).toBeNull();
+  it("모든 객실이 예약마감이면 null", () => {
+    expect(parseRoomPagePrice(withMarker("예약마감", "12호 피렌체(기준2인요금)"))).toBeNull();
+  });
+
+  it("날짜가 반영된 목록이 아니면(홈으로 리다이렉트된 호텔·리조트) 쿠폰 금액이 있어도 null", () => {
+    expect(parseRoomPagePrice("세이지우드 홍천\n쿠폰\n5,000원\n이용약관")).toBeNull();
+  });
+
+  it("설명 문구 속 금액(적립금)은 가격으로 보지 않는다", () => {
+    expect(parseRoomPagePrice(withMarker("스탠다드 트윈", "78,400원", "네이버페이", "최대 784원 적립"))).toBe(78400);
+  });
+});
+
+describe("naver parseHotelPagePrice (hotels.naver.com /rates)", () => {
+  it("헤더의 해당 일정 최저가를 쓴다 (본문의 다른 가격 줄이 더 낮아도)", () => {
+    const text = [
+      "10.10.-10.11. (1박)",
+      "439,884원",
+      "전체 가격 비교하기",
+      "439,884원~",
+      "10.10.토-10.11.일, 1박2명",
+      "1박 최저가 추이",
+      "147,585원",
+      "스탠다드 더블룸",
+      "439,884원",
+    ].join("\n");
+    expect(parseHotelPagePrice(text)).toBe(439884);
+  });
+
+  it("'예약 가능한 객실 없음'이면 추천 호텔 가격이 보여도 null", () => {
+    const text = [
+      "예약 가능한 객실 없음",
+      "선택하신 일정에 예약 가능한 객실이 없습니다.",
+      "이 호텔을 본 다른 사람이 함께 찾는 호텔이에요!",
+      "소노벨 비발디파크",
+      "100,581원~",
+    ].join("\n");
+    expect(parseHotelPagePrice(text)).toBeNull();
+  });
+
+  it("헤더 가격이 없으면 null", () => {
+    expect(parseHotelPagePrice("가격 안내 준비중")).toBeNull();
   });
 });
 
@@ -116,9 +169,9 @@ describe("naver toHotel", () => {
 });
 
 describe("naver URL helpers", () => {
-  it("펜션/객실 상세 링크에 날짜가 들어간다", () => {
+  it("펜션/객실 상세 링크에 날짜(checkin/checkout, YYYYMMDD)와 인원이 들어간다", () => {
     expect(naverPlaceUrl("123", "2026-10-05", "2026-10-06")).toBe(
-      "https://pcmap.place.naver.com/accommodation/123/room?startDate=2026-10-05&endDate=2026-10-06",
+      "https://pcmap.place.naver.com/accommodation/123/room?checkin=20261005&checkout=20261006&guest=2",
     );
   });
 

@@ -11,8 +11,11 @@ import type { Hotel } from "../../lib/schema";
 
 const BOOKMARK_PAGE = "https://map.naver.com/p/bookmark";
 const BOOKMARK_API = "/p/api/bookmark";
-/** 스킬 노트(`docs/aside-browser-handoff.md`, `.claude/skills/antigravity-naver-hotel/`) 기준 지연. */
-const DETAIL_DELAY_MS = 2000;
+/**
+ * 숙소 사이 지연. 2초 간격·동시 2개로 돌리면 네이버가 `errorCode: 408`로 제한해서(2026-10-06 관찰)
+ * 한 번에 1곳, 6초 기준으로 늦췄다(jitter 적용).
+ */
+const DETAIL_DELAY_MS = 6000;
 const LOGIN_WAIT_MS = 120_000;
 const LOGIN_POLL_MS = 1500;
 
@@ -36,8 +39,6 @@ const ACCOMMODATION_KEYWORDS = [
   "stay",
 ];
 
-const PRICE_RE = /(\d{1,3}(?:,\d{3})*)\s*원/;
-const SOLD_OUT_RE = /예약\s*마감/;
 
 export interface BookmarkItem {
   id: string;
@@ -56,9 +57,13 @@ export interface PriceInfo {
 
 export type ParsedItem = { kind: "ok"; hotel: Hotel } | { kind: "filtered" };
 
-/** 상세/객실 페이지. 캘린더 조작 없이 날짜를 쿼리로 바로 넣는다(아이프레임 부모 경유 없이도 동작 확인됨). */
+/**
+ * 상세/객실 페이지. 캘린더 조작 없이 날짜를 쿼리로 바로 넣는다. 파라미터는 `checkin`/`checkout`(YYYYMMDD)/`guest`다.
+ * 예전 `startDate`/`endDate`는 날짜가 반영되지 않는다(2026-10-06 확인: "일정선택"이 비고 가격이 범위로 나옴).
+ */
 export function naverPlaceUrl(sid: string, checkin: string, checkout: string): string {
-  return `https://pcmap.place.naver.com/accommodation/${sid}/room?startDate=${checkin}&endDate=${checkout}`;
+  const compact = (d: string) => d.replaceAll("-", "");
+  return `https://pcmap.place.naver.com/accommodation/${sid}/room?checkin=${compact(checkin)}&checkout=${compact(checkout)}&guest=2`;
 }
 
 /** 체인 호텔/리조트는 네이버호텔 실시간 가격비교로 뜨는 경우가 있다(펜션 페이지에 가격이 없을 때 시도). */
@@ -66,13 +71,51 @@ export function naverHotelUrl(sid: string, checkin: string, checkout: string): s
   return `https://hotels.naver.com/accommodation/search/detail/domestic/${sid}/rates?dAdultCnt=2&dCheckIn=${checkin}&dCheckOut=${checkout}`;
 }
 
-/** "150,000원~" 같은 텍스트에서 가격을 뽑는다. 예약 마감이면 null(제외 대상). */
-export function parsePriceKRW(text: string): number | null {
-  if (SOLD_OUT_RE.test(text)) return null;
-  const m = text.match(PRICE_RE);
+/** 객실 목록에서 가격만 한 줄을 차지하는 경우("179,000원"). 설명 문구 속 금액("최대 5,221원 적립")과 구분한다. */
+const PRICE_LINE_RE = /^(\d{1,3}(?:,\d{3})+)원$/;
+/** 네이버호텔이 해당 일정에 객실이 없을 때 쓰는 문구. 이때 화면의 `N원~`은 추천 호텔 가격이다. */
+const NO_ROOMS_RE = /예약\s*가능한\s*객실\s*(?:이\s*)?없/;
+
+const toWon = (s: string) => Number.parseInt(s.replace(/,/g, ""), 10);
+
+/** 날짜가 반영된 객실 목록(pcmap `/room`)에만 나오는 문구. 호텔·리조트는 `/room`이 홈으로 리다이렉트돼 이 문구가 없다. */
+const ROOM_RESULT_MARKER = "선택하신 조건";
+/** 네이버호텔 헤더의 해당 일정 1박 최저가: "104,429원\n전체 가격 비교하기". */
+const HOTEL_HEADER_PRICE_RE = /(\d{1,3}(?:,\d{3})+)원\s*\n\s*전체 가격 비교하기/;
+
+function minPriceLine(text: string): number | null {
+  const prices = text
+    .split("\n")
+    .map((l) => l.trim().match(PRICE_LINE_RE))
+    .filter((m): m is RegExpMatchArray => m !== null)
+    .map((m) => toWon(m[1]))
+    .filter((n) => n > 0);
+  return prices.length > 0 ? Math.min(...prices) : null;
+}
+
+/**
+ * 객실 페이지(pcmap `/room`)에서 그 날짜의 1박 최저가. 제외 대상이면 null.
+ * - 날짜가 반영된 목록("선택하신 조건…")이 아니면 null: 홈으로 리다이렉트된 페이지의 쿠폰·광고 금액을 가격으로 읽지 않는다.
+ * - 가격만 있는 줄 중 최저가. 일부 객실만 "예약마감"이어도 나머지 객실이 팔리면 예약 가능하다.
+ */
+export function parseRoomPagePrice(text: string): number | null {
+  const k = text.indexOf(ROOM_RESULT_MARKER);
+  if (k < 0) return null;
+  const end = text.indexOf("이용약관", k);
+  return minPriceLine(text.slice(k, end < 0 ? undefined : end));
+}
+
+/**
+ * 네이버호텔 `/rates` 본문에서 그 날짜의 1박 최저가(세금 포함). 제외 대상이면 null.
+ * - "예약 가능한 객실 없음"이면 null(화면의 `N원~`은 추천 호텔 가격).
+ * - 객실 줄이 아니라 헤더 가격을 쓴다: 본문엔 다른 날짜 가격 등 가격 줄이 더 있어 최저값이 어긋난다.
+ */
+export function parseHotelPagePrice(text: string): number | null {
+  if (NO_ROOMS_RE.test(text)) return null;
+  const m = text.match(HOTEL_HEADER_PRICE_RE);
   if (!m) return null;
-  const n = Number.parseInt(m[1].replace(/,/g, ""), 10);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  const n = toWon(m[1]);
+  return n > 0 ? n : null;
 }
 
 /**
@@ -178,9 +221,12 @@ async function fetchBookmarks(page: import("playwright").Page): Promise<Bookmark
   return items.filter(isAccommodationBookmark);
 }
 
-async function scanPriceOnCurrentPage(page: import("playwright").Page): Promise<{ amount: number | null; note: string | null }> {
+async function scanPriceOnCurrentPage(
+  page: import("playwright").Page,
+  parse: (text: string) => number | null,
+): Promise<{ amount: number | null; note: string | null }> {
   const bodyText: string = await page.evaluate(() => document.body.innerText).catch(() => "");
-  const amount = parsePriceKRW(bodyText);
+  const amount = parse(bodyText);
   let note: string | null = null;
   if (amount !== null) {
     if (/회원가|회원\s*할인/.test(bodyText)) note = "회원가";
@@ -200,7 +246,7 @@ async function fetchPriceInfo(
   if (resp && (resp.status() === 403 || resp.status() === 429)) throw new BlockedError(`네이버 플레이스 ${resp.status()}`);
   await page.waitForTimeout(2500);
 
-  let { amount, note } = await scanPriceOnCurrentPage(page);
+  let { amount, note } = await scanPriceOnCurrentPage(page, parseRoomPagePrice);
   let url = placeUrl;
 
   // 펜션 페이지에 가격이 없으면(체인 호텔·리조트 등) 네이버호텔 가격비교를 시도한다.
@@ -210,7 +256,7 @@ async function fetchPriceInfo(
     if (hResp && (hResp.status() === 403 || hResp.status() === 429)) throw new BlockedError(`네이버호텔 ${hResp.status()}`);
     if (hResp && hResp.status() === 200) {
       await page.waitForTimeout(2500);
-      const scanned = await scanPriceOnCurrentPage(page);
+      const scanned = await scanPriceOnCurrentPage(page, parseHotelPagePrice);
       if (scanned.amount !== null) {
         amount = scanned.amount;
         note = scanned.note;
