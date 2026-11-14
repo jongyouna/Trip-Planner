@@ -109,4 +109,4 @@ URL: `https://hotels.naver.com/accommodation/search/detail/domestic/{sid}/rates?
 
 ## 참고
 
-- 기존 Playwright 경로와 API 상세: `.claude/skills/antigravity-naver-hotel/`, 프로젝트 `CLAUDE.md`의 "네이버 지도 즐겨찾기 메모".
+- 기존 Playwright 경로와 API 상세: `.agents/skills/antigravity-naver-hotel/`(Antigravity용 원본), 프로젝트 `CLAUDE.md`의 "네이버 지도 즐겨찾기 메모".
